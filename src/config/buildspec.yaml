@@ -1,0 +1,15 @@
+#buildspec.yml
+version: 0.2
+
+phases:
+  install:
+    commands:
+      #install the dependencies required
+      - pip install -r  /src/dependencies/requirements.txt -t .
+    build:
+      commands:
+        #build the code
+        - aws cloudformation package --template-file /src/templates/testTemplate.yaml
+
+
+

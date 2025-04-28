@@ -1,0 +1,265 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: 'Serverless RAG Q&A application using Knowledge Base , Agents, Opensearch Serverless'
+Parameters:
+  KnowledgeBaseName:
+    Default: rag-bedrock-kb-v3
+    Type: String
+    Description: The name of the knowledge base.
+
+  KnowledgeBaseDescription:
+    Default: Answer based only on information contained in knowledge base.
+    Type: String
+    Description: The description of the knowledge base.
+  AgentName:
+    Default: rag-bedrock-agent-v3
+    Type: String
+    Description: The name of the agent.
+  BedrockModelRegion:
+    Type: String
+    Description: Select the Bedrock service region from available options. Please make sure the model is access granted in the selected region Bedrock service. If your AOS service is in a region that is different than the bedrock service region, you may expect cross-region latency.
+    AllowedValues:
+      - us-east-1
+      - us-west-2
+      - eu-central-1
+      - ap-northeast-1
+      - ap-southeast-1
+    Default: us-west-2
+
+
+Resources:
+ # roles are for the aws services to be able to perform actions
+  # exemple of a role :  Roles allow AWS resources or services to act on behalf of an AWS account. For instance, an EC2 instance might need to access S3, so you would assign an IAM role to the EC2 instance that gives it the necessary permissions.
+# polies are for 
+
+  AmazonBedrockExecutionRoleForAgentsQA:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: bedrock.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+      Policies:
+        - PolicyName: AllowLambdaInvoke
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+
+
+
+
+  KnowledgeBaseWithAoss:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Ref KnowledgeBaseName
+      Description: !Ref KnowledgeBaseDescription
+      RoleArn:  !ImportValue   "test-11-documentingestionlambdaexecutionrole"
+      KnowledgeBaseConfiguration:
+        Type: "VECTOR"
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}::foundation-model/amazon.titan-embed-text-v2:0"
+      StorageConfiguration:
+        Type: "OPENSEARCH_SERVERLESS"
+        OpensearchServerlessConfiguration:
+          CollectionArn: !ImportValue "test-11-collectionarn"
+          VectorIndexName: !ImportValue "test-11-opensearchindexname"
+
+          FieldMapping:
+            VectorField: "bedrock-knowledge-base-default-vector"
+            TextField: "AMAZON_BEDROCK_TEXT"
+            MetadataField: "AMAZON_BEDROCK_METADATA"
+  SampleDataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId:  !Ref KnowledgeBaseWithAoss
+      Name: !ImportValue "test-11-s3bucketname"
+      DataSourceConfiguration:
+        Type: "S3"
+        S3Configuration:
+          BucketArn: !ImportValue "test-11-s3bucket"
+      VectorIngestionConfiguration:
+        ChunkingConfiguration:
+          ChunkingStrategy: "SEMANTIC"
+          SemanticChunkingConfiguration:
+            MaxTokens: 300
+            BreakpointPercentileThreshold: 90
+            BufferSize: 1
+
+
+
+
+
+  DocumentIngestionLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../functions/
+      Handler: document_ingestion.lambda_handler
+      Runtime: python3.11
+      MemorySize: 128
+      Timeout: 120
+      Role: !ImportValue   "test-11-documentingestionlambdaexecutionrole"
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !ImportValue "test-11-s3bucketname"
+      Environment:
+        Variables:
+          knowledge_base_id: !Ref KnowledgeBaseWithAoss
+          data_source_id:  !Ref SampleDataSource
+
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - aws.s3
+              detail-type:
+                - Object Created
+    DependsOn:
+      - KnowledgeBaseWithAoss
+      - SampleDataSource
+
+
+
+
+  AmazonBedrockExecutionRoleForKnowledgeBase:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+                - s3.amazonaws.com
+                - bedrock.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: UnifiedAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+
+              # S3 Read Access
+              - Effect: Allow
+                Action:
+                  - s3:Get*
+                  - s3:List*
+                  - s3:Describe*
+                  - s3-object-lambda:Get*
+                  - s3-object-lambda:List*
+                Resource:
+                  - "*"  # fallback if specific bucket not provided
+
+              # OpenSearch Serverless (AOSS) Access
+              - Effect: Allow
+                Action:
+                  - aoss:*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - aoss:APIAccessAll
+                Resource: !Sub arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*
+
+              # Bedrock Access
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:ListFoundationModels
+                  - bedrock:ListCustomModels
+                  - bedrock:RetrieveAndGenerate
+                Resource:
+                  - "*"
+                  - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
+
+
+  AgentResource:
+      Type: AWS::Bedrock::Agent
+      Properties:
+        AgentName: !Ref AgentName
+        AgentResourceRoleArn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
+
+        AutoPrepare: true
+        FoundationModel:  !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.meta.llama3-1-8b-instruct-v1:0"
+        Instruction: "You are a helpful assistant. You have access to a knowledge base. Use it to answer every question when possible. 
+  Always cite the documents used in your answer. If you can't find information in the knowledge base, say so.
+  Do not guess or make up information. Show the source title or file name in your response if available."
+        Description: "Description is here"
+        IdleSessionTTLInSeconds: 900
+        KnowledgeBases:
+          - KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
+            Description: !Ref KnowledgeBaseDescription
+            KnowledgeBaseState: ENABLED
+  LambdaInvokePolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'lambda:InvokeFunction'
+            Resource: '*'
+
+
+  AgentAlias:
+    Type: AWS::Bedrock::AgentAlias
+    DependsOn: AgentResource
+    Properties:
+      AgentId: !GetAtt AgentResource.AgentId
+      AgentAliasName: default
+
+  InvokeAgentLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: InvokeBedrockAgentFunction
+      Handler: bedrock_api.lambda_handler
+      Runtime: python3.11
+      CodeUri: ../functions/
+      Timeout: 120
+      MemorySize: 256
+      Environment:
+        Variables:
+          AGENT_ID: !GetAtt AgentResource.AgentId
+          AGENT_ALIAS_ID: !Ref AgentAlias
+      Policies:
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeAgent
+            Resource: "*"
+      Events:
+        ApiInvoke:
+          Type: Api
+          Properties:
+            Path: /invoke
+            Method: POST
+
+Outputs:
+  BedrockAgentId:
+    Description: The ID of the created Bedrock Agent
+    Value: !Ref AgentResource
+
+  BedrockAgentAliasId:
+    Description: The ID of the created Agent Alias
+    Value: !Ref AgentAlias
+
+
