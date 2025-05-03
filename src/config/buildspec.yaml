@@ -4,7 +4,7 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      #install the dependencies required
+      #install the dependencies required !
       - echo "Listing files:"
       - ls -R
       - pip install -r  /src/dependencies/requirements.txt -t .
