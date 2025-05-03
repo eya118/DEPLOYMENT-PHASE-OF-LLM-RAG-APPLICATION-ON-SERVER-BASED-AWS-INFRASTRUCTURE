@@ -1,15 +1,23 @@
-#buildspec.yml
 version: 0.2
-
 phases:
   install:
+    runtime-versions:
+      python: 3.11
     commands:
       #install the dependencies required
       - pip install -r  /src/dependencies/requirements.txt -t .
-    build:
-      commands:
-        #build the code
-        - aws cloudformation package --template-file src/templates/DemoEnvironementBedrockMain.yaml -s3-bucket pipeline-bucket-2025
-
+      - echo Installing AWS CLI
+      - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+      - unzip awscliv2.zip
+      - sudo ./aws/install
+  build:
+    commands:
+      - echo "start"
+      - aws --version  # Check it's working
+      - aws cloudformation package \
+          --template-file src/templates/DemoEnvironementBedrockMain.yaml \
+          --s3-bucket pipeline-bucket-2025 \
+          --output-template-file src/templates/packaged-template.yaml
+      - echo "end"
 
 
