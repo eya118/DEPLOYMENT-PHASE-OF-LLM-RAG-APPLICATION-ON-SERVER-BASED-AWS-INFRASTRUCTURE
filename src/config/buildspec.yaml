@@ -7,7 +7,7 @@ phases:
       #install the dependencies required !
       - echo "Listing files:"
       - ls -R
-      - pip install -r  /src/dependencies/requirements.txt -t .
+      - pip install -r  src/dependencies/requirements.txt -t .
       - echo Installing AWS CLI
       - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
       - unzip awscliv2.zip
@@ -22,4 +22,15 @@ phases:
           --output-template-file src/templates/packaged-template.yaml
       - echo "end"
 
-
+#
+#version: 0.2
+#
+#phases:
+#  build:
+#    commands:
+#      - echo "Install python dependencies"
+#      - python -m pip install --upgrade pip
+#      - if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+#      # - echo "Run tests"
+#      # - python -m pip install flake8 pytest
+#      # - pytest
