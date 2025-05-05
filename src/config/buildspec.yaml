@@ -13,9 +13,7 @@ phases:
       - echo "start"
       - aws --version  # Check it's working
       - aws cloudformation package \
-          --template-file src/templates/DemoEnvironementBedrockMain.yaml \
-          --s3-bucket pipeline-bucket-2025 \
-          --output-template-file src/templates/packaged-template.yaml
+          --template-file src/templates/DemoEnvironementBedrockMain.yaml   --s3-bucket pipeline-bucket-2025   --output-template-file src/templates/packaged-template.yaml
       - echo "end"
 
 #
