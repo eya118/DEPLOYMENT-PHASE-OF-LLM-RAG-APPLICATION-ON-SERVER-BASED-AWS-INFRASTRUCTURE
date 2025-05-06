@@ -42,6 +42,7 @@ phases:
        --no-fail-on-empty-changeset \
        --parameter-overrides \
        - EnvironmentName=dev \
+       - ExportNamePrefix = "change_prefix" \
        - KnowledgeBaseName=test-kb-br-v2 \
        - KnowledgeBaseDescription="Answer based only on information contained in knowledge base. If the knowledge base does not contain sufficient or relevant information, use your general knowledge and reasoning." \
        - AgentName=test-agent-br-v2 \

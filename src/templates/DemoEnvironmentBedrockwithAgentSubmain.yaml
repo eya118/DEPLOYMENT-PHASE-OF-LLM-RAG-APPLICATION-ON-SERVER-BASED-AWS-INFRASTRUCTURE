@@ -2,6 +2,9 @@ AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Description: 'Serverless RAG Q&A application using Knowledge Base , Agents, Opensearch Serverless'
 Parameters:
+  ExportNamePrefix:
+    Type: String
+    Default: "change_prefix"
   EnvironmentName:
     Type: String
     Default: dev
@@ -64,7 +67,7 @@ Resources:
     Properties:
       Name: !Ref KnowledgeBaseName
       Description: !Ref KnowledgeBaseDescription
-      RoleArn:  !ImportValue   "${AWS::EnvironmentName}-documentingestionlambdaexecutionrole"
+      RoleArn:  !ImportValue   "${AWS::ExportNamePrefix}-documentingestionlambdaexecutionrole"
       KnowledgeBaseConfiguration:
         Type: "VECTOR"
         VectorKnowledgeBaseConfiguration:
@@ -72,8 +75,8 @@ Resources:
       StorageConfiguration:
         Type: "OPENSEARCH_SERVERLESS"
         OpensearchServerlessConfiguration:
-          CollectionArn: !ImportValue "${AWS::EnvironmentName}-collectionarn"
-          VectorIndexName: !ImportValue "${AWS::EnvironmentName}-opensearchindexname"
+          CollectionArn: !ImportValue "${AWS::ExportNamePrefix}-collectionarn"
+          VectorIndexName: !ImportValue "${AWS::ExportNamePrefix}-opensearchindexname"
 
           FieldMapping:
             VectorField: "bedrock-knowledge-base-default-vector"
@@ -83,11 +86,11 @@ Resources:
     Type: AWS::Bedrock::DataSource
     Properties:
       KnowledgeBaseId:  !Ref KnowledgeBaseWithAoss
-      Name: !ImportValue "${AWS::EnvironmentName}-s3bucketname"
+      Name: !ImportValue "${AWS::ExportNamePrefix}-s3bucketname"
       DataSourceConfiguration:
         Type: "S3"
         S3Configuration:
-          BucketArn: !ImportValue "${AWS::EnvironmentName}-s3bucket"
+          BucketArn: !ImportValue "${AWS::ExportNamePrefix}-s3bucket"
       VectorIngestionConfiguration:
         ChunkingConfiguration:
           ChunkingStrategy: "SEMANTIC"
@@ -108,10 +111,10 @@ Resources:
       Runtime: python3.11
       MemorySize: 128
       Timeout: 120
-      Role: !ImportValue   "${AWS::EnvironmentName}-documentingestionlambdaexecutionrole"
+      Role: !ImportValue   "${AWS::ExportNamePrefix}-documentingestionlambdaexecutionrole"
       Policies:
         - S3ReadPolicy:
-            BucketName: !ImportValue "${AWS::EnvironmentName}-s3bucketname"
+            BucketName: !ImportValue "${AWS::ExportNamePrefix}-s3bucketname"
       Environment:
         Variables:
           knowledge_base_id: !Ref KnowledgeBaseWithAoss
