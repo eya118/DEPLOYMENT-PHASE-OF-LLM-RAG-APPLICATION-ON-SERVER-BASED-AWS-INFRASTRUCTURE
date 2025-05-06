@@ -23,9 +23,7 @@ phases:
 
       - echo "📦 Packaging SAM application..."
       - sam package \
-          --template-file .aws-sam/build/template.yaml \
-          --s3-bucket pipeline-bucket-2025 \
-          --output-template-file src/templates/packaged-template.yaml
+          --template-file .aws-sam/build/template.yaml --s3-bucket pipeline-bucket-2025  --output-template-file src/templates/packaged-template.yaml
 
       - echo "🏁 Build phase completed."
 
