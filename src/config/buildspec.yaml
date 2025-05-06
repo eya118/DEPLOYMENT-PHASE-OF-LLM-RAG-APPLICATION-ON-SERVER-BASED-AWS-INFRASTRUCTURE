@@ -1,19 +1,29 @@
 version: 0.2
+
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
-      #install the dependencies required !
-      - echo "Listing files:"
+      - echo "🔧 Installing Python dependencies..."
+      - pip install -r src/dependencies/requirements.txt -t .
       - ls -R
-      - pip install -r  src/dependencies/requirements.txt -t .
+      - echo " Installing AWS SAM CLI..."
+      - pip install aws-sam-cli
+
   build:
     commands:
-      - echo "start"
-      - aws --version  # Check it's working
-      - aws cloudformation package    --template-file src/templates/DemoEnvironementBedrockMain.yaml   --s3-bucket pipeline-bucket-2025   --output-template-file src/templates/packaged-template.yaml
-      - echo "end"
+      - echo " Starting build phase..."
+      - echo " AWS CLI version:"
+      - aws --version
+      - echo " Building the SAM application..."
+      - sam build --template-file src/templates/DemoEnvironementBedrockMain.yaml --build-dir .aws-sam
+      - echo " Packaging SAM application..."
+      - sam package \
+          --template-file .aws-sam/template.yaml \
+          --s3-bucket pipeline-bucket-2025 \
+          --output-template-file src/templates/packaged-template.yaml
+      - echo " Build phase completed."
 
 #
 #version: 0.2
