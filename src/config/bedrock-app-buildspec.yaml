@@ -1,0 +1,50 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "🔧 Installing Python dependencies..."
+      - pip install -r src/dependencies/requirements.txt -t .
+      - echo "📁 Listing all files for verification:"
+      - ls -R
+      - echo "📦 Installing AWS SAM CLI..."
+      - pip install aws-sam-cli
+
+  build:
+    commands:
+      - echo "🚀 Starting build phase..."
+      - echo "✅ AWS CLI version:"
+      - aws --version
+
+      - echo "🔨 Running SAM build for second template..."
+      - sam build --template-file src/templates/DemoEnvironmentBedrockwithAgentSubmain.yaml
+
+      - echo "📦 Packaging second SAM application..."
+      - sam package \
+          --template-file .aws-sam/build/template_bedrock.yaml \
+          --s3-bucket pipeline-bucket-2025 \
+          --output-template-file src/templates/packaged-bedrock-template.yaml
+
+      - echo "🏁 Build phase completed."
+
+  post_build:
+    commands:
+      - echo "🚀 Deploying second SAM application..."
+      - STACK_NAME="demo-bedrock-second-stack-$(date +%Y%m%d-%H%M%S)"
+      - sam deploy \
+       --template-file src/templates/packaged-bedrock-template.yaml \
+       --stack-name "$STACK_NAME" \
+       --capabilities CAPABILITY_NAMED_IAM \
+       --region us-west-2 \
+       --no-confirm-changeset \
+       --no-fail-on-empty-changeset \
+       --parameter-overrides \
+       - EnvironmentName=dev \
+       - KnowledgeBaseName=test-kb-br-v2 \
+       - KnowledgeBaseDescription="Answer based only on information contained in knowledge base. If the knowledge base does not contain sufficient or relevant information, use your general knowledge and reasoning." \
+       - AgentName=test-agent-br-v2 \
+       - BedrockModelRegion=us-west-2
+
+      - echo "✅ Deployment complete."

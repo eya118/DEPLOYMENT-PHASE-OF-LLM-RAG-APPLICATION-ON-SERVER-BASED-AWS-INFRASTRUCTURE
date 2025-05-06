@@ -2,6 +2,9 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Automating document vectorization using OpenSearch and Bedrock
 Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
   AmazonOpenSearchCollectionName:
     Type: String
     Description: "The collection name to create for storing vector embeddings"
@@ -70,7 +73,7 @@ Resources:
   IndexCreationLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../functions/
+      CodeUri:  src/functions/
       Handler: index_creation.lambda_handler
       Runtime: python3.11
       MemorySize: 128
@@ -141,7 +144,7 @@ Resources:
     Properties:
       LayerName: document-ingestion-libs
       Description: Dependencies for the document ingestion function
-      ContentUri: ../dependencies/.
+      ContentUri: src/dependencies
       CompatibleRuntimes:
         - python3.11
     Metadata:
@@ -173,7 +176,7 @@ Resources:
   EncryptionPolicy:
     Type: AWS::OpenSearchServerless::SecurityPolicy
     Properties:
-      Name: example-encryption-policy
+      Name: !Sub "encryption-policy-${AWS::StackName}"
       Type: encryption
       Description: Encryption policy for example collection
       Policy: !Sub '{"Rules":[{"ResourceType":"collection","Resource":["collection/${AmazonOpenSearchCollectionName}"]}],"AWSOwnedKey":true}'
@@ -181,7 +184,7 @@ Resources:
   SecurityPolicy:
     Type: AWS::OpenSearchServerless::SecurityPolicy
     Properties:
-      Name: example-network-policy
+      Name: !Sub "network-policy-${AWS::StackName}"
       Type: network
       Description: Network policy for example collections
       Policy: !Sub '[{"Rules":[{"ResourceType":"collection","Resource":["collection/${AmazonOpenSearchCollectionName}"]}, {"ResourceType":"dashboard","Resource":["collection/${AmazonOpenSearchCollectionName}"]}],"AllowFromPublic":true}]'
@@ -200,7 +203,7 @@ Resources:
   AccessPolicy:
     Type: AWS::OpenSearchServerless::AccessPolicy
     Properties:
-      Name: example-access-policy
+      Name: !Sub "access-policy-${AWS::StackName}"
       Type: data
       Description: Access policy for the collection
       Policy: !Sub '[{"Description":"Access for Users","Rules":[{"ResourceType":"index","Resource":["index/${AmazonOpenSearchCollectionName}/${AmazonOpenSearchIndexName}"],"Permission":["aoss:*"]}, {"ResourceType":"collection","Resource":["collection/${AmazonOpenSearchCollectionName}"],"Permission":["aoss:*"]}], "Principal":["${UnifiedBedrockExecutionRole.Arn}","${IndexCreationLambdaExecutionRole.Arn}"]}]'
@@ -211,13 +214,13 @@ Outputs:
   S3Bucket:
     Value: !GetAtt SourceBucket.Arn
     Export:
-      Name: !Sub "${AWS::StackName}-s3bucket"
+      Name: !Sub "${AWS::EnvironmentName}-s3bucket"
 
   S3BucketName:
     Value: !Ref SourceBucket
     Description: S3 Bucket for object storage
     Export:
-      Name: !Sub "${AWS::StackName}-s3bucketname"
+      Name: !Sub "${AWS::EnvironmentName}-s3bucketname"
 
 
 
@@ -225,21 +228,21 @@ Outputs:
   DashboardURL:
     Value: !GetAtt ExampleCollection.DashboardEndpoint
     Export:
-      Name: !Sub "${AWS::StackName}-dashboardurl"
+      Name: !Sub "${AWS::EnvironmentName}-dashboardurl"
 
   DocumentIngestionLambdaExecutionRole:
     Value: !GetAtt UnifiedBedrockExecutionRole.Arn
     Export:
-      Name: !Sub "${AWS::StackName}-documentingestionlambdaexecutionrole"
+      Name: !Sub "${AWS::EnvironmentName}-documentingestionlambdaexecutionrole"
 
   CollectionARN:
     Value: !GetAtt ExampleCollection.Arn
     Description: Collection ARN for the created collection
     Export:
-      Name: !Sub "${AWS::StackName}-collectionarn"
+      Name: !Sub "${AWS::EnvironmentName}-collectionarn"
 
   OpenSearchIndexName:
     Description: "Name of the created OpenSearch index"
     Value: !Ref AmazonOpenSearchIndexName
     Export:
-      Name: !Sub "${AWS::StackName}-opensearchindexname"
+      Name: !Sub "${AWS::EnvironmentName}-opensearchindexname"

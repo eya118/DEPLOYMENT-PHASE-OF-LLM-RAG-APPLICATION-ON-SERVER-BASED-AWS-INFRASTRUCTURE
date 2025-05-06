@@ -30,7 +30,8 @@ phases:
   post_build:
     commands:
       - echo "🚀 Deploying SAM application..."
-      - sam deploy --template-file src/templates/packaged-template.yaml --stack-name demo-bedrock-stack --capabilities CAPABILITY_NAMED_IAM --region us-west-2 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides EnvironmentName=dev AmazonOpenSearchCollectionName=demobedrockcollection AmazonOpenSearchIndexName=demobedrockindex BedrockModelRegion=us-west-2 UserName=eya
+      - STACK_NAME="demo-bedrock-main-stack-$(date +%Y%m%d-%H%M%S)"
+      - sam deploy --template-file src/templates/packaged-template.yaml --stack-name "$STACK_NAME" --capabilities CAPABILITY_NAMED_IAM --region us-west-2 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides EnvironmentName=dev AmazonOpenSearchCollectionName=demobedrockcollection AmazonOpenSearchIndexName=demobedrockindex BedrockModelRegion=us-west-2 UserName=eya
       - echo "✅ Deployment complete."
 
 
