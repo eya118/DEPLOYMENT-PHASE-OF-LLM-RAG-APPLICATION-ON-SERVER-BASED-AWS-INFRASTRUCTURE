@@ -100,7 +100,7 @@ Resources:
   DocumentIngestionLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ../functions/
+      CodeUri:  src/functions/
       Handler: document_ingestion.lambda_handler
       Runtime: python3.11
       MemorySize: 128
@@ -233,7 +233,7 @@ Resources:
       FunctionName: InvokeBedrockAgentFunction
       Handler: bedrock_api.lambda_handler
       Runtime: python3.11
-      CodeUri: ../functions/
+      CodeUri:  src/functions/
       Timeout: 120
       MemorySize: 256
       Environment:
