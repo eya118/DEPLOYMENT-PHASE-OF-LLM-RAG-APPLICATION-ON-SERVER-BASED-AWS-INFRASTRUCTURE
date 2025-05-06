@@ -27,6 +27,25 @@ phases:
 
       - echo "🏁 Build phase completed."
 
+  post_build:
+    commands:
+      - echo "🚀 Deploying SAM application..."
+      - sam deploy \
+        --template-file src/templates/packaged-template.yaml \
+        --stack-name demo-bedrock-stack \
+        --capabilities CAPABILITY_NAMED_IAM \
+        --region us-west-2 \
+        --confirm-changeset \
+        --no-fail-on-empty-changeset \
+        --parameter-overrides \
+        EnvironmentName=dev \
+        AmazonOpenSearchCollectionName=DemoBedrockcollection \
+        AmazonOpenSearchIndexName=DemoBedrockIndex \
+        BedrockModelRegion=us-west-2 \
+        UserName=eya
+      - echo "✅ Deployment complete."
+
+
 
 #
 #version: 0.2
