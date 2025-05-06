@@ -73,7 +73,7 @@ Resources:
   IndexCreationLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri:  src/functions/
+      CodeUri:  ../functions/
       Handler: index_creation.lambda_handler
       Runtime: python3.11
       MemorySize: 128
@@ -144,7 +144,7 @@ Resources:
     Properties:
       LayerName: document-ingestion-libs
       Description: Dependencies for the document ingestion function
-      ContentUri: src/dependencies
+      ContentUri: ../dependencies/
       CompatibleRuntimes:
         - python3.11
     Metadata:
