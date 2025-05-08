@@ -2,6 +2,9 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Automating document vectorization using OpenSearch and Bedrock
 Parameters:
+  EnvironmentName:
+    Type: String
+    Default: "dev"
   AmazonOpenSearchCollectionName:
     Type: String
     Description: "The collection name to create for storing vector embeddings"
