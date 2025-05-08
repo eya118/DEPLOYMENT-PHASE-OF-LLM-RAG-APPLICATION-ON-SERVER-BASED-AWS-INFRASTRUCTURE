@@ -28,13 +28,32 @@ phases:
       - echo "🏁 Build phase completed."
 
   post_build:
-    on-failure: ABOR
+    on-failure: ABORT
     commands:
-      - echo "🚀 Deploying SAM application..."
+      - echo " Deploying SAM application..."
       - STACK_NAME="demo-bedrock-main-stack-$(date +%Y%m%d-%H%M%S)"
-      - sam deploy --template-file src/templates/packaged-template.yaml --stack-name "$STACK_NAME" --capabilities CAPABILITY_NAMED_IAM --region us-west-2 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides ExportNamePrefix=change_prefix EnvironmentName=dev AmazonOpenSearchCollectionName=demobedrockcollection AmazonOpenSearchIndexName=demobedrockindex BedrockModelRegion=us-west-2 UserName=eya
-      - echo "✅ Deployment complete."
-
+      - |
+        if sam deploy \
+            --template-file src/templates/packaged-template.yaml \
+            --stack-name "$STACK_NAME" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region us-west-2 \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+                ExportNamePrefix=change_prefix \
+                EnvironmentName=dev \
+                AmazonOpenSearchCollectionName=demobedrockcollection \
+                AmazonOpenSearchIndexName=demobedrockindex \
+                BedrockModelRegion=us-west-2 \
+                UserName=eya; then
+          echo "✅ Deployment complete."
+        else
+          echo "❌ Deployment failed. Deleting stack $STACK_NAME..."
+          aws cloudformation delete-stack --stack-name "$STACK_NAME" --region us-west-2
+          echo "Stack deletion triggered."
+          exit 1
+        fi
 
 
 
