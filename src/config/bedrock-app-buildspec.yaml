@@ -33,19 +33,19 @@ phases:
     commands:
       - echo "🚀 Deploying second SAM application..."
       - STACK_NAME="demo-bedrock-second-stack-$(date +%Y%m%d-%H%M%S)"
-      - sam deploy \
-       --template-file src/templates/packaged-bedrock-template.yaml \
-       --stack-name "$STACK_NAME" \
-       --capabilities CAPABILITY_NAMED_IAM \
-       --region us-west-2 \
-       --no-confirm-changeset \
-       --no-fail-on-empty-changeset \
-       --parameter-overrides \
-       - EnvironmentName=dev \
-       - ExportNamePrefix = "change_prefix" \
-       - KnowledgeBaseName=test-kb-br-v2 \
-       - KnowledgeBaseDescription="Answer based only on information contained in knowledge base. If the knowledge base does not contain sufficient or relevant information, use your general knowledge and reasoning." \
-       - AgentName=test-agent-br-v2 \
-       - BedrockModelRegion=us-west-2
-
+      - |
+        sam deploy \
+          --template-file src/templates/packaged-bedrock-template.yaml \
+          --stack-name "$STACK_NAME" \
+          --capabilities CAPABILITY_NAMED_IAM \
+          --region us-west-2 \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides \
+            EnvironmentName=dev \
+            KnowledgeBaseName=test-kb-br-v33 \
+            KnowledgeBaseDescription="Answer based only on information contained in knowledge base. If the knowledge base does not contain sufficient or relevant information, use your general knowledge and reasoning." \
+            AgentName=test-agent-br-v33 \
+            BedrockModelRegion=us-west-2
       - echo "✅ Deployment complete."
+
