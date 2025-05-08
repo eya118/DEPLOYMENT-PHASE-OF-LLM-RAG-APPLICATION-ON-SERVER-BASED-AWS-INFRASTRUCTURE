@@ -174,7 +174,7 @@ Resources:
   EncryptionPolicy:
     Type: AWS::OpenSearchServerless::SecurityPolicy
     Properties:
-      Name: !Sub "encryption-policy-${AWS::StackName}"
+      Name: !Sub "encryption-policy-${EnvironmentName}-${AWS::Region}"
       Type: encryption
       Description: Encryption policy for example collection
       Policy: !Sub '{"Rules":[{"ResourceType":"collection","Resource":["collection/${AmazonOpenSearchCollectionName}"]}],"AWSOwnedKey":true}'
@@ -182,7 +182,7 @@ Resources:
   SecurityPolicy:
     Type: AWS::OpenSearchServerless::SecurityPolicy
     Properties:
-      Name: !Sub "network-policy-${AWS::StackName}"
+      Name: !Sub "network-policy-${EnvironmentName}-${AWS::Region}"
       Type: network
       Description: Network policy for example collections
       Policy: !Sub '[{"Rules":[{"ResourceType":"collection","Resource":["collection/${AmazonOpenSearchCollectionName}"]}, {"ResourceType":"dashboard","Resource":["collection/${AmazonOpenSearchCollectionName}"]}],"AllowFromPublic":true}]'
@@ -201,7 +201,7 @@ Resources:
   AccessPolicy:
     Type: AWS::OpenSearchServerless::AccessPolicy
     Properties:
-      Name: !Sub "access-policy-${AWS::StackName}"
+      Name: !Sub "access-policy-${EnvironmentName}-${AWS::Region}"
       Type: data
       Description: Access policy for the collection
       Policy: !Sub '[{"Description":"Access for Users","Rules":[{"ResourceType":"index","Resource":["index/${AmazonOpenSearchCollectionName}/${AmazonOpenSearchIndexName}"],"Permission":["aoss:*"]}, {"ResourceType":"collection","Resource":["collection/${AmazonOpenSearchCollectionName}"],"Permission":["aoss:*"]}], "Principal":["${UnifiedBedrockExecutionRole.Arn}","${IndexCreationLambdaExecutionRole.Arn}"]}]'

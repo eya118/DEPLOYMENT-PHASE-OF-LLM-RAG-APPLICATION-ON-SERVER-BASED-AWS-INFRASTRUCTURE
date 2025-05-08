@@ -28,6 +28,7 @@ phases:
       - echo "🏁 Build phase completed."
 
   post_build:
+    on-failure: ABOR
     commands:
       - echo "🚀 Deploying SAM application..."
       - STACK_NAME="demo-bedrock-main-stack-$(date +%Y%m%d-%H%M%S)"
