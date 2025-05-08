@@ -31,7 +31,7 @@ phases:
     on-failure: ABORT
     commands:
       - echo " Deploying SAM application..."
-      - STACK_NAME="demo-bedrock-main-stack-$(date +%Y%m%d-%H%M%S)"
+      - STACK_NAME="demo-bedrock-main-stack-test"
       - |
         if sam deploy \
             --template-file src/templates/packaged-template.yaml \

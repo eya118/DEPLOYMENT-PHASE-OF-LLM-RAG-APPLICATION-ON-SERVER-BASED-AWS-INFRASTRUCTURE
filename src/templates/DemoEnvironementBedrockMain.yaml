@@ -40,7 +40,7 @@ Resources:
   IndexCreationLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName:  !Sub "IndexCreationLambdaExecutionRole-${AWS::StackName}"
+      RoleName:  !Sub "IndexCreationLambdaExecutionRole-${EnvironmentName}-${AWS::Region}"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
