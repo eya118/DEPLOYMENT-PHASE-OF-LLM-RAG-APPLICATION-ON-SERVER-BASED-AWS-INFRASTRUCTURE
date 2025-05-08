@@ -2,12 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Automating document vectorization using OpenSearch and Bedrock
 Parameters:
-  ExportNamePrefix:
-    Type: String
-    Default: "change_prefix"
-  EnvironmentName:
-    Type: String
-    Default: dev
   AmazonOpenSearchCollectionName:
     Type: String
     Description: "The collection name to create for storing vector embeddings"
@@ -43,6 +37,7 @@ Resources:
   IndexCreationLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName:  !Sub "IndexCreationLambdaExecutionRole-${AWS::StackName}"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -217,13 +212,13 @@ Outputs:
   S3Bucket:
     Value: !GetAtt SourceBucket.Arn
     Export:
-      Name: !Sub "${AWS::ExportNamePrefix}-s3bucket"
+      Name: !Sub "${AWS::StackName}-s3bucket"
 
   S3BucketName:
     Value: !Ref SourceBucket
     Description: S3 Bucket for object storage
     Export:
-      Name: !Sub "${AWS::ExportNamePrefix}-s3bucketname"
+      Name: !Sub "${AWS::StackName}-s3bucketname"
 
 
 
@@ -231,21 +226,21 @@ Outputs:
   DashboardURL:
     Value: !GetAtt ExampleCollection.DashboardEndpoint
     Export:
-      Name: !Sub "${AWS::ExportNamePrefix}-dashboardurl"
+      Name: !Sub "${AWS::StackName}-dashboardurl"
 
   DocumentIngestionLambdaExecutionRole:
     Value: !GetAtt UnifiedBedrockExecutionRole.Arn
     Export:
-      Name: !Sub "${AWS::ExportNamePrefix}-documentingestionlambdaexecutionrole"
+      Name: !Sub "${AWS::StackName}-documentingestionlambdaexecutionrole"
 
   CollectionARN:
     Value: !GetAtt ExampleCollection.Arn
     Description: Collection ARN for the created collection
     Export:
-      Name: !Sub "${AWS::ExportNamePrefix}-collectionarn"
+      Name: !Sub "${AWS::StackName}-collectionarn"
 
   OpenSearchIndexName:
     Description: "Name of the created OpenSearch index"
     Value: !Ref AmazonOpenSearchIndexName
     Export:
-      Name: !Sub "${AWS::ExportNamePrefix}-opensearchindexname"
+      Name: !Sub "${AWS::StackName}-opensearchindexname"
