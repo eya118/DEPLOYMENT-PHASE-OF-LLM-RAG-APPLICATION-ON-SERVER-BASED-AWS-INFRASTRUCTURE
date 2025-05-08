@@ -22,7 +22,8 @@ phases:
       - sam build --template-file src/templates/DemoEnvironmentBedrockwithAgentSubmain.yaml
 
       - echo "📦 Packaging second SAM application..."
-      - sam package \
+      - |
+        sam package \
           --template-file .aws-sam/build/template.yaml \
           --s3-bucket pipeline-bucket-2025 \
           --output-template-file src/templates/packaged-bedrock-template.yaml
