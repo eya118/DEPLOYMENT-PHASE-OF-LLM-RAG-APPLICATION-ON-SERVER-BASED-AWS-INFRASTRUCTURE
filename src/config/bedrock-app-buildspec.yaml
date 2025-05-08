@@ -23,7 +23,7 @@ phases:
 
       - echo "📦 Packaging second SAM application..."
       - sam package \
-          --template-file .aws-sam/build/template_bedrock.yaml \
+          --template-file .aws-sam/build/template.yaml \
           --s3-bucket pipeline-bucket-2025 \
           --output-template-file src/templates/packaged-bedrock-template.yaml
 
