@@ -44,9 +44,9 @@ phases:
           --no-fail-on-empty-changeset \
           --parameter-overrides \
             EnvironmentName=dev \
-            KnowledgeBaseName=test-kb-br-v33 \
+            KnowledgeBaseName=test-knowledgebase-v1 \
             KnowledgeBaseDescription="Answer based only on information contained in knowledge base. If the knowledge base does not contain sufficient or relevant information, use your general knowledge and reasoning." \
-            AgentName=test-agent-br-v33 \
+            AgentName=test-bedrock-agent-v1 \
             BedrockModelRegion=us-west-2
       - echo "✅ Deployment complete."
 
