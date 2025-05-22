@@ -26,6 +26,7 @@ class AgentInvoker:
                 agentAliasId=self.agent_alias_id,
                 sessionId=session_id,
                 inputText=prompt,
+
             )
 
             for event in response.get("completion", []):

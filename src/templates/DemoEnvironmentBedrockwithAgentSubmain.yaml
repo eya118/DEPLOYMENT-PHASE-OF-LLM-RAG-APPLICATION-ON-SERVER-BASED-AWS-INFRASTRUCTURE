@@ -201,7 +201,8 @@ Resources:
         AgentResourceRoleArn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
 
         AutoPrepare: true
-        FoundationModel:  !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.meta.llama3-1-8b-instruct-v1:0"
+       # FoundationModel:  !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.meta.llama3-1-8b-instruct-v1:0"
+        FoundationModel:  !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/mistral.mistral-7b-instruct-v0:2"
         Instruction: "You are a helpful assistant. You have access to a knowledge base. Use it to answer every question when possible. 
   Always cite the documents used in your answer. If you can't find information in the knowledge base, say so.
   Do not guess or make up information. Show the source title or file name in your response if available."
