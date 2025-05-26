@@ -8,14 +8,38 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+PROMPT_TEXT = """Human:
+<question>{{question}}</question>
+
+<thinking>Réflexion sur la bonne formulation du message.</thinking>
+<action>Générer l'e‑mail client basé sur les instructions métier et le contexte</action>
+<action_input>Contenu RAG, données JSON sur les anomalies</action_input>
+<observation>Email généré</observation>
+
+<thinking>L’e‑mail est rédigé selon les règles définies.</thinking>
+<answer>Email final prêt à être envoyé au client.</answer>
+
+<context>
+{{instruction}}
+
+### Modèle d’email (basé sur les documents PDF RAG)  
+{{RETRIEVED_CONTEXT}}
+
+### Données disponibles  
+{{ANOMALY_CONTEXT}}
+</context>
+
+Assistant:"""
+
 class AgentInvoker:
     def __init__(self):
         self.agents_runtime_client = boto3.client("bedrock-agent-runtime")
+        self.agents_client = boto3.client("bedrock-agent")
         self.full_alias = os.environ["AGENT_ALIAS_ID"]
         self.agent_id, self.agent_alias_id = self.full_alias.split("|")
 
     def get_prompt_override_config(self):
-        config = {
+        return {
             "promptConfigurations": [
                 {
                     "templateType": "TEXT",
@@ -38,46 +62,36 @@ class AgentInvoker:
                                 {"name": "RETRIEVED_CONTEXT"},
                                 {"name": "ANOMALY_CONTEXT"}
                             ],
-                            "text": """Human:
-<question>{{question}}</question>
-
-<thinking>Réflexion sur la bonne formulation du message.</thinking>
-<action>Générer l'e‑mail client basé sur les instructions métier et le contexte</action>
-<action_input>Contenu RAG, données JSON sur les anomalies</action_input>
-<observation>Email généré</observation>
-
-<thinking>L’e‑mail est rédigé selon les règles définies.</thinking>
-<answer>Email final prêt à être envoyé au client.</answer>
-
-<context>
-{{instruction}}
-
-### Modèle d’e‑mail (basé sur les documents PDF RAG)  
-{{RETRIEVED_CONTEXT}}
-
-### Données disponibles  
-{{ANOMALY_CONTEXT}}
-</context>
-
-Assistant:"""
+                            "text": PROMPT_TEXT
                         }
                     }
                 }
             ]
         }
-        return config
 
-    def invoke_agent(self, instruction, question, retrieved_context, anomaly_context):
+    def update_agent_with_prompt(self):
+        logger.info("Updating agent with prompt override configuration...")
+        self.agents_client.update_agent(
+            agentId=self.agent_id,
+            promptOverrideConfiguration=self.get_prompt_override_config()
+        )
+
+    def create_agent_version(self):
+        logger.info("Creating agent version...")
+        return self.agents_client.create_agent_version(agentId=self.agent_id)["agentVersion"]
+
+    def update_alias(self, version):
+        logger.info("Updating agent alias to new version...")
+        self.agents_client.update_agent_alias(
+            agentId=self.agent_id,
+            agentAliasId=self.agent_alias_id,
+            agentVersion=version
+        )
+
+    def invoke_agent(self, prompt):
         session_id = str(uuid.uuid4())
         completion = ""
         citations = []
-
-        prompt_input = {
-            "instruction": instruction,
-            "question": question,
-            "RETRIEVED_CONTEXT": retrieved_context,
-            "ANOMALY_CONTEXT": anomaly_context
-        }
 
         try:
             logger.info(f"Invoking agent {self.agent_id} with alias {self.agent_alias_id}")
@@ -85,8 +99,7 @@ Assistant:"""
                 agentId=self.agent_id,
                 agentAliasId=self.agent_alias_id,
                 sessionId=session_id,
-                inputText=json.dumps(prompt_input),
-                promptOverrideConfiguration=self.get_prompt_override_config()
+                inputText=prompt,
             )
 
             for event in response.get("completion", []):
@@ -123,16 +136,16 @@ def lambda_handler(event, context):
         else:
             body = event
 
-        question = body.get("prompt", "")
-        instruction = body.get("instruction", "")
-        retrieved_context = body.get("RETRIEVED_CONTEXT", "")
-        anomaly_context = body.get("ANOMALY_CONTEXT", "")
-
-        if not question:
+        prompt = body.get("prompt", "")
+        if not prompt:
             return {"statusCode": 400, "body": "Missing 'prompt' in the input."}
 
         invoker = AgentInvoker()
-        result = invoker.invoke_agent(instruction, question, retrieved_context, anomaly_context)
+        invoker.update_agent_with_prompt()
+        version = invoker.create_agent_version()
+        invoker.update_alias(version)
+
+        result = invoker.invoke_agent(prompt)
 
         return {
             "statusCode": 200,
