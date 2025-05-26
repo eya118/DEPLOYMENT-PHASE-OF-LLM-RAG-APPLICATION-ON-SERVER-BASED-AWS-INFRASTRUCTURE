@@ -39,11 +39,12 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
+        Version: "2012-10-17"
         Statement:
-        - Effect: Allow
-          Principal:
-            Service: bedrock.amazonaws.com
-          Action: sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
       Policies:
@@ -55,6 +56,23 @@ Resources:
                 Action:
                   - lambda:InvokeFunction
                 Resource: "*"
+        - PolicyName: AllowBedrockUpdateAgent
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:UpdateAgent
+                Resource: "*"
+        - PolicyName: AllowPassRole
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: "*"
+
 
 
 
@@ -245,12 +263,24 @@ Resources:
         Variables:
           AGENT_ID: !GetAtt AgentResource.AgentId
           AGENT_ALIAS_ID: !Ref AgentAlias
+          Agent_name:  !Ref AgentName
+          Agent_resource_arn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
       Policies:
-        Statement:
-          - Effect: Allow
-            Action:
-              - bedrock:InvokeAgent
-            Resource: "*"
+        - PolicyName: BedrockAgentPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeAgent
+                  - bedrock:UpdateAgent
+                  - bedrock:PrepareAgent
+                  - bedrock:UpdateAgentAlias
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: "*"
       Events:
         ApiInvoke:
           Type: Api

@@ -8,28 +8,46 @@ from botocore.exceptions import ClientError
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-PROMPT_TEXT = """Human:
-<question>{{question}}</question>
+BASE_PROMPT_TEMPLATE = json.dumps({
 
-<thinking>Réflexion sur la bonne formulation du message.</thinking>
-<action>Générer l'e‑mail client basé sur les instructions métier et le contexte</action>
-<action_input>Contenu RAG, données JSON sur les anomalies</action_input>
-<observation>Email généré</observation>
+    "system": """{{instruction}}
+You are a helpful assistant called eya  with tool/function calling capabilities.
 
-<thinking>L’e‑mail est rédigé selon les règles définies.</thinking>
-<answer>Email final prêt à être envoyé au client.</answer>
+Given the following tools/functions, please respond with a JSON for a tool/function call with its proper arguments that best answers the given prompt. Respond in the format {"name": tool/function name, "parameters": dictionary of argument name and its value}. Do not use variables.
 
-<context>
-{{instruction}}
+If you need an input parameter for a tool/function, ask the user to provide that parameter before making a call to that function/tool. You will have access to a separate tool/function that you MUST use to ask questions to the user{{respond_to_user_follow_up}}. Never call a tool/function before gathering all parameters required for the tool/function call.
 
-### Modèle d’email (basé sur les documents PDF RAG)  
-{{RETRIEVED_CONTEXT}}
+It is your responsibility to pick the correct tools/functions that are going to help you answer the user questions. Continue using the provided tools/functions until the initial user request is perfectly addressed. If you do not have the necessary tools/functions to address the initial request, call it out and terminate conversation.
 
-### Données disponibles  
-{{ANOMALY_CONTEXT}}
-</context>
+When you receive a tool/function call response, use the output to format an answer to the original user question.
 
-Assistant:"""
+Provide your final answer to the user's question {{final_answer_guideline}}{{respond_to_user_final_answer_guideline}}.
+{{knowledge_base_additional_guideline}}
+{{respond_to_user_knowledge_base_additional_guideline}}
+{{memory_guideline}}
+{{memory_content}}
+{{memory_action_guideline}}
+{{prompt_session_attributes}}""",
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "text": "{{question}}"
+                }
+            ]
+        },
+        {
+            "role": "assistant",
+            "content": [
+                {
+                    "text": "{{agent_scratchpad}}"
+                }
+            ]
+        }
+    ]
+})
+
 
 class AgentInvoker:
     def __init__(self):
@@ -42,11 +60,11 @@ class AgentInvoker:
         return {
             "promptConfigurations": [
                 {
-                    "templateType": "TEXT",
+
                     "promptType": "ORCHESTRATION",
                     "promptState": "ENABLED",
                     "promptCreationMode": "OVERRIDDEN",
-                    "parserMode": "OVERRIDDEN",
+                    "parserMode": "DEFAULT",
                     "inferenceConfiguration": {
                         "maximumLength": 2048,
                         "stopSequences": ["Human:"],
@@ -54,38 +72,30 @@ class AgentInvoker:
                         "topK": 1,
                         "topP": 1.0
                     },
-                    "templateConfiguration": {
-                        "text": {
-                            "inputVariables": [
-                                {"name": "instruction"},
-                                {"name": "question"},
-                                {"name": "RETRIEVED_CONTEXT"},
-                                {"name": "ANOMALY_CONTEXT"}
-                            ],
-                            "text": PROMPT_TEXT
-                        }
-                    }
-                }
-            ]
+                    "basePromptTemplate": BASE_PROMPT_TEMPLATE
+                }]
         }
 
     def update_agent_with_prompt(self):
         logger.info("Updating agent with prompt override configuration...")
         self.agents_client.update_agent(
             agentId=self.agent_id,
+            agentName="test-bedrock-agent-v3",
+            foundationModel="us.meta.llama3-1-8b-instruct-v1:0",
+            agentResourceRoleArn="arn:aws:iam::539279406888:role/demo-bedrock-second-stack-AmazonBedrockExecutionRol-curBRrwP1l8T",
             promptOverrideConfiguration=self.get_prompt_override_config()
         )
 
     def create_agent_version(self):
         logger.info("Creating agent version...")
-        return self.agents_client.create_agent_version(agentId=self.agent_id)["agentVersion"]
+        return self.agents_client.prepare_agent(agentId=self.agent_id)["agentVersion"]
 
     def update_alias(self, version):
         logger.info("Updating agent alias to new version...")
         self.agents_client.update_agent_alias(
             agentId=self.agent_id,
             agentAliasId=self.agent_alias_id,
-            agentVersion=version
+            agentAliasName="dev-alias"
         )
 
     def invoke_agent(self, prompt):
@@ -129,6 +139,7 @@ class AgentInvoker:
             logger.error(f"Couldn't invoke agent: {e}")
             raise
 
+
 def lambda_handler(event, context):
     try:
         if "body" in event:
@@ -143,7 +154,7 @@ def lambda_handler(event, context):
         invoker = AgentInvoker()
         invoker.update_agent_with_prompt()
         version = invoker.create_agent_version()
-        invoker.update_alias(version)
+        # invoker.update_alias(version)
 
         result = invoker.invoke_agent(prompt)
 
