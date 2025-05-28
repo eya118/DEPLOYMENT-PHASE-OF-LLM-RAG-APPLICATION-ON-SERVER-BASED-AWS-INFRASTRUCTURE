@@ -293,7 +293,7 @@ Resources:
     Properties:
       LayerName: longchain-libs
       Description: Dependencies for agent
-      ContentUri: ../dependencies/         # it give me an error
+      ContentUri: ../dependencies/         # i specified the whole folder
       CompatibleRuntimes:
         - python3.11
     Metadata:

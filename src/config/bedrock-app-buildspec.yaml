@@ -6,7 +6,7 @@ phases:
       python: 3.11
     commands:
       - echo "🔧 Installing Python dependencies..."
-      - pip install -r src/dependencies/requiremen_for_longchain_layer.txt -t .
+      - pip install -r src/dependencies/requiremen_for_longchain_layer.txt -t src/dependencies/python
       - echo "📁 Listing all files for verification:"
       - ls -R
       - echo "📦 Installing AWS SAM CLI..."
