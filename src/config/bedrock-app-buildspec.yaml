@@ -6,7 +6,7 @@ phases:
       python: 3.11
     commands:
       - echo "🔧 Installing Python dependencies..."
-      - pip install -r src/dependencies/requirements.txt -t .
+      - pip install -r src/dependencies/requiremen_for_longchain_layer.txt -t .
       - echo "📁 Listing all files for verification:"
       - ls -R
       - echo "📦 Installing AWS SAM CLI..."
@@ -44,9 +44,9 @@ phases:
           --no-fail-on-empty-changeset \
           --parameter-overrides \
             EnvironmentName=dev \
-            KnowledgeBaseName=test-knowledgebase-v4 \
+            KnowledgeBaseName=test-knowledgebase-v5 \
             KnowledgeBaseDescription="Answer based only on information contained in knowledge base. If the knowledge base does not contain sufficient or relevant information, use your general knowledge and reasoning." \
-            AgentName=test-bedrock-agent-v4 \
+            AgentName=test-bedrock-agent-v5 \
             BedrockModelRegion=us-west-2
       - echo "✅ Deployment complete."
 
