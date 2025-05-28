@@ -257,7 +257,7 @@ Resources:
       Runtime: python3.11
       CodeUri:  ../functions/
       Layers:
-        - !Ref longchain-libs
+        - !Ref DependenciesLogchainLibrary
       Timeout: 120
       MemorySize: 256
       Environment:
@@ -287,7 +287,8 @@ Resources:
           Properties:
             Path: /invoke
             Method: POST
-  DependenciesLibrary:
+
+  DependenciesLogchainLibrary:
     Type: AWS::Serverless::LayerVersion
     Properties:
       LayerName: longchain-libs
