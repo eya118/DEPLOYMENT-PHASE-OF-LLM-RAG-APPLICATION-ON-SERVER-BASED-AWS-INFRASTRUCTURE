@@ -249,10 +249,10 @@ Resources:
       AgentId: !GetAtt AgentResource.AgentId
       AgentAliasName: default
 
-  InvokeAgentLambdaFunction:
+  InvokeAgentLambdaFunctiontest:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: InvokeBedrockAgentFunction
+      FunctionName: InvokeBedrockAgentFunctiontest
       Handler: bedrock_api.lambda_handler
       Runtime: python3.11
       CodeUri:  ../functions/
