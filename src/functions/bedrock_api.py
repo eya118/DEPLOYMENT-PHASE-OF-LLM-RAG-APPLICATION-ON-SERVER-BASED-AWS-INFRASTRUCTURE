@@ -4,49 +4,38 @@ import json
 import boto3
 import logging
 from botocore.exceptions import ClientError
+import time
+import sys
+
+from langchain.prompts import PromptTemplate
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-BASE_PROMPT_TEMPLATE = json.dumps({
+BASE_PROMPT_TEMPLATE = """
 
-    "system": """{{instruction}}
-You are a helpful assistant called eya  with tool/function calling capabilities.
+{
+  "system": "Vous êtes un expert en communication client. Avant de générer l’e-mail, assurez-vous que les variables suivantes sont bien fournies : 
+- {{RETRIEVED_CONTEXT}} 
+- {{ANOMALY_CONTEXT}}
 
-Given the following tools/functions, please respond with a JSON for a tool/function call with its proper arguments that best answers the given prompt. Respond in the format {"name": tool/function name, "parameters": dictionary of argument name and its value}. Do not use variables.
-
-If you need an input parameter for a tool/function, ask the user to provide that parameter before making a call to that function/tool. You will have access to a separate tool/function that you MUST use to ask questions to the user{{respond_to_user_follow_up}}. Never call a tool/function before gathering all parameters required for the tool/function call.
-
-It is your responsibility to pick the correct tools/functions that are going to help you answer the user questions. Continue using the provided tools/functions until the initial user request is perfectly addressed. If you do not have the necessary tools/functions to address the initial request, call it out and terminate conversation.
-
-When you receive a tool/function call response, use the output to format an answer to the original user question.
-
-Provide your final answer to the user's question {{final_answer_guideline}}{{respond_to_user_final_answer_guideline}}.
-{{knowledge_base_additional_guideline}}
-{{respond_to_user_knowledge_base_additional_guideline}}
-{{memory_guideline}}
-{{memory_content}}
-{{memory_action_guideline}}
-{{prompt_session_attributes}}""",
-    "messages": [
+Si l’une des variables est manquante ou vide, répondez :
+Erreur : contexte manquant. Merci de fournir toutes les données nécessaires. ",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
         {
-            "role": "user",
-            "content": [
-                {
-                    "text": "{{question}}"
-                }
-            ]
-        },
-        {
-            "role": "assistant",
-            "content": [
-                {
-                    "text": "{{agent_scratchpad}}"
-                }
-            ]
+          "text": "Merci, pouvez-vous générer l'e-mail maintenant ?   "
         }
-    ]
-})
+      ]
+    }
+  ]
+}
+
+
+
+"""
 
 
 class AgentInvoker:
@@ -56,49 +45,76 @@ class AgentInvoker:
         self.full_alias = os.environ["AGENT_ALIAS_ID"]
         self.agent_id, self.agent_alias_id = self.full_alias.split("|")
 
-    def get_prompt_override_config(self):
-        return {
-            "promptConfigurations": [
-                {
-
-                    "promptType": "ORCHESTRATION",
-                    "promptState": "ENABLED",
-                    "promptCreationMode": "OVERRIDDEN",
-                    "parserMode": "DEFAULT",
-                    "inferenceConfiguration": {
-                        "maximumLength": 2048,
-                        "stopSequences": ["Human:"],
-                        "temperature": 0.0,
-                        "topK": 1,
-                        "topP": 1.0
-                    },
-                    "basePromptTemplate": BASE_PROMPT_TEMPLATE
-                }]
-        }
-
-    def update_agent_with_prompt(self):
+    def update_agent_with_prompt(self, retrieved_context, anomaly_context):
         logger.info("Updating agent with prompt override configuration...")
+
+        instruction = "you are a helpful assistant. You have access to a knowledge base. Use it to answer every question when possible. Always cite the documents used in your answer. If you can't find information in the knowledge base, say so. Do not guess or make up information. Show the source title or file name in your response if available."
+
         self.agents_client.update_agent(
             agentId=self.agent_id,
             agentName="test-bedrock-agent-v3",
             foundationModel="us.meta.llama3-1-8b-instruct-v1:0",
             agentResourceRoleArn="arn:aws:iam::539279406888:role/demo-bedrock-second-stack-AmazonBedrockExecutionRol-curBRrwP1l8T",
-            promptOverrideConfiguration=self.get_prompt_override_config()
+            promptOverrideConfiguration={
+                "promptConfigurations": [
+                    {
+                        "promptType": "ORCHESTRATION",
+                        "promptState": "ENABLED",
+                        "promptCreationMode": "OVERRIDDEN",
+                        "parserMode": "DEFAULT",
+                        "inferenceConfiguration": {
+                            "maximumLength": 2048,
+                            "stopSequences": ["Human:"],
+                            "temperature": 0.0,
+                            "topK": 1,
+                            "topP": 1.0
+                        },
+                        "basePromptTemplate": BASE_PROMPT_TEMPLATE
+                    }
+                ]
+            },
+            instruction=instruction
         )
+
+    def sleep_for_a_while(self, seconds, tick=12):
+        spinner_parts = "|/-\\"
+        wait_count = 0
+        while wait_count < seconds:
+            for frame in range(tick):
+                sys.stdout.write(f"\r{spinner_parts[frame % len(spinner_parts)]}")
+                sys.stdout.flush()
+                time.sleep(1 / tick)
+            wait_count += 1
+        sys.stdout.write("\r")
+        sys.stdout.flush()
 
     def create_agent_version(self):
         logger.info("Creating agent version...")
-        return self.agents_client.prepare_agent(agentId=self.agent_id)["agentVersion"]
+        version = self.agents_client.prepare_agent(agentId=self.agent_id)["agentVersion"]
+
+        # Wait until the agent is prepared
+        while True:
+            agent_status = self.agents_client.get_agent(agentId=self.agent_id)["agent"]["agentStatus"]
+            if agent_status == "PREPARED":
+                break
+            logger.info(f"Waiting for agent to be prepared... Current status: {agent_status}")
+            self.sleep_for_a_while(5)
+
+        return version
 
     def update_alias(self, version):
         logger.info("Updating agent alias to new version...")
         self.agents_client.update_agent_alias(
             agentId=self.agent_id,
-            agentAliasId=self.agent_alias_id,
-            agentAliasName="dev-alias"
+            agentAliasId=self.agent_alias_id, #change
+            agentAliasName="default",  #change
+            routingConfiguration=[
+                {"agentVersion": "1"} #3
+            ]
+
         )
 
-    def invoke_agent(self, prompt):
+    def invoke_agent(self, variables_json):
         session_id = str(uuid.uuid4())
         completion = ""
         citations = []
@@ -107,9 +123,9 @@ class AgentInvoker:
             logger.info(f"Invoking agent {self.agent_id} with alias {self.agent_alias_id}")
             response = self.agents_runtime_client.invoke_agent(
                 agentId=self.agent_id,
-                agentAliasId=self.agent_alias_id,
+                agentAliasId="W7UY7RB2TV",
                 sessionId=session_id,
-                inputText=prompt,
+                inputText=variables_json
             )
 
             for event in response.get("completion", []):
@@ -147,16 +163,18 @@ def lambda_handler(event, context):
         else:
             body = event
 
-        prompt = body.get("prompt", "")
-        if not prompt:
-            return {"statusCode": 400, "body": "Missing 'prompt' in the input."}
+        retrieved_context = body.get("retrieved_context", "")
+        anomaly_context = body.get("anomaly_context", "")
+        question = body.get("question", "Merci, pouvez-vous générer l'e-mail maintenant ?")
 
         invoker = AgentInvoker()
-        invoker.update_agent_with_prompt()
+        invoker.update_agent_with_prompt(retrieved_context, anomaly_context)
         version = invoker.create_agent_version()
-        # invoker.update_alias(version)
+        invoker.update_alias(version)
+        print("the question !!", question)
+        input_payload = question
 
-        result = invoker.invoke_agent(prompt)
+        result = invoker.invoke_agent(input_payload)
 
         return {
             "statusCode": 200,

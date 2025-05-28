@@ -256,7 +256,8 @@ Resources:
       Handler: bedrock_api.lambda_handler
       Runtime: python3.11
       CodeUri:  ../functions/
-
+      Layers:
+        - !Ref longchain-libs
       Timeout: 120
       MemorySize: 256
       Environment:
@@ -276,6 +277,7 @@ Resources:
                   - bedrock:UpdateAgent
                   - bedrock:PrepareAgent
                   - bedrock:UpdateAgentAlias
+                  - bedrock:GetAgent
                 Resource: "*"
               - Effect: Allow
                 Action:
@@ -287,7 +289,16 @@ Resources:
           Properties:
             Path: /invoke
             Method: POST
-
+  DependenciesLibrary:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: longchain-libs
+      Description: Dependencies for agent
+      ContentUri: ../dependencies/requiremen_for_longchain_layer.txt
+      CompatibleRuntimes:
+        - python3.11
+    Metadata:
+      BuildMethod: python3.11
 Outputs:
   BedrockAgentId:
     Description: The ID of the created Bedrock Agent

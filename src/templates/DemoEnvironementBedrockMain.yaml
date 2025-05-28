@@ -129,6 +129,7 @@ Resources:
                 Resource: !Sub arn:aws:aoss:${AWS::Region}:${AWS::AccountId}:collection/*
               - Effect: Allow
                 Action:
+                  - bedrock:*
                   - bedrock:InvokeModel
                   - bedrock:ListFoundationModels
                   - bedrock:ListCustomModels
