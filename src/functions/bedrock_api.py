@@ -3,40 +3,30 @@ import uuid
 import json
 import boto3
 import logging
-from botocore.exceptions import ClientError
 import time
 import sys
-
+from botocore.exceptions import ClientError
 from langchain.prompts import PromptTemplate
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-BASE_PROMPT_TEMPLATE = """
-
+# Define the LangChain prompt template here
+PROMPT_TEMPLATE = """
 {
-  "system": "Vous êtes un expert en communication client. Avant de générer l’e-mail, assurez-vous que les variables suivantes sont bien fournies : 
-- {{RETRIEVED_CONTEXT}} 
-- {{ANOMALY_CONTEXT}}
-
-Si l’une des variables est manquante ou vide, répondez :
-Erreur : contexte manquant. Merci de fournir toutes les données nécessaires. ",
+  "system": "Vous êtes un expert en communication client. Voici les variables fournies : \\n- {retrieved_context} \\n- {anomaly_context}",
   "messages": [
-    {
+    {{
       "role": "user",
       "content": [
-        {
-          "text": "Merci, pouvez-vous générer l'e-mail maintenant ?   "
-        }
+        {{
+          "text": "Merci, pouvez-vous générer l'e-mail maintenant ?"
+        }}
       ]
-    }
+    }}
   ]
 }
-
-
-
 """
-
 
 class AgentInvoker:
     def __init__(self):
@@ -45,10 +35,20 @@ class AgentInvoker:
         self.full_alias = os.environ["AGENT_ALIAS_ID"]
         self.agent_id, self.agent_alias_id = self.full_alias.split("|")
 
-    def update_agent_with_prompt(self, retrieved_context, anomaly_context):
-        logger.info("Updating agent with prompt override configuration...")
+    def build_dynamic_prompt(self, retrieved_context, anomaly_context):
+        # Use LangChain PromptTemplate to inject variables
+        prompt = PromptTemplate.from_template(PROMPT_TEMPLATE)
+        return prompt.format(
+            retrieved_context=retrieved_context or "AUCUN CONTEXTE",
+            anomaly_context=anomaly_context or "AUCUN CONTEXTE"
+        )
 
-        instruction = "you are a helpful assistant. You have access to a knowledge base. Use it to answer every question when possible. Always cite the documents used in your answer. If you can't find information in the knowledge base, say so. Do not guess or make up information. Show the source title or file name in your response if available."
+    def update_agent_with_prompt(self, retrieved_context, anomaly_context):
+        logger.info("Updating agent with dynamic prompt...")
+
+        dynamic_prompt = self.build_dynamic_prompt(retrieved_context, anomaly_context)
+
+        instruction = "you are a helpful assistant..."
 
         self.agents_client.update_agent(
             agentId=self.agent_id,
@@ -69,7 +69,7 @@ class AgentInvoker:
                             "topK": 1,
                             "topP": 1.0
                         },
-                        "basePromptTemplate": BASE_PROMPT_TEMPLATE
+                        "basePromptTemplate": dynamic_prompt
                     }
                 ]
             },
@@ -106,15 +106,14 @@ class AgentInvoker:
         logger.info("Updating agent alias to new version...")
         self.agents_client.update_agent_alias(
             agentId=self.agent_id,
-            agentAliasId=self.agent_alias_id, #change
-            agentAliasName="default",  #change
+            agentAliasId=self.agent_alias_id,
+            agentAliasName="default",
             routingConfiguration=[
-                {"agentVersion": "1"} #3
+                {"agentVersion": version}  # Use the actual version
             ]
-
         )
 
-    def invoke_agent(self, variables_json):
+    def invoke_agent(self, question):
         session_id = str(uuid.uuid4())
         completion = ""
         citations = []
@@ -123,9 +122,9 @@ class AgentInvoker:
             logger.info(f"Invoking agent {self.agent_id} with alias {self.agent_alias_id}")
             response = self.agents_runtime_client.invoke_agent(
                 agentId=self.agent_id,
-                agentAliasId="W7UY7RB2TV",
+                agentAliasId=self.agent_alias_id,
                 sessionId=session_id,
-                inputText=variables_json
+                inputText=question
             )
 
             for event in response.get("completion", []):
@@ -171,10 +170,9 @@ def lambda_handler(event, context):
         invoker.update_agent_with_prompt(retrieved_context, anomaly_context)
         version = invoker.create_agent_version()
         invoker.update_alias(version)
-        print("the question !!", question)
-        input_payload = question
 
-        result = invoker.invoke_agent(input_payload)
+        logger.info("Sending final question to agent...")
+        result = invoker.invoke_agent(question)
 
         return {
             "statusCode": 200,
