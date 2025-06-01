@@ -24,7 +24,7 @@ def lambda_handler(event, context):
             "promptConfigurations": [
                 {
                     "promptType": "USER_INPUT",
-                    "promptTemplate": "Answer this question strictly using the knowledge base: {input}",
+                    "promptTemplate": "Answer this question strictly using the knowledge base: {input}  then generate the answer in a format of an email and then say thank you",
                     "inferenceConfiguration": {
                         "temperature": 0.7,
                         "topP": 1.0,
