@@ -67,6 +67,7 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - bedrock:*
                 - bedrock:CreateAgent
                 - bedrock:CreateAgentAlias
                 - bedrock:InvokeAgent
