@@ -222,26 +222,40 @@ Resources:
               Lambda: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:lambda_function_delete_aftertest'
             ApiSchema:
               Payload: |
-                openapi: 3.0.0
-                info:
-                  title: Energy Monitoring API
-                  version: 1.0.0
-                  description: API to get the consumption of device
-                paths:
-                  /energy_api/json:
-                    get:
-                      operationId: getEnergyConsumption
-                      summary: Get energy consumption data
-                      responses:
-                        '200':
-                          description: Successful response
-                          content:
-                            application/json:
-                              schema:
-                                type: object
-                                properties:
-                                  daily_energy_consumption:
-                                    type: number
+                {
+                  "openapi": "3.0.0",
+                  "info": {
+                    "title": "Energy Monitoring API for Agent",
+                    "version": "1.0.0",
+                    "description": "API to get the consumption of a device"
+                  },
+                  "paths": {
+                    "/energy_api/json": {
+                      "get": {
+                        "operationId": "getEnergyConsumptionUniqueId",
+                        "summary": "Get energy consumption data",
+                        "responses": {
+                          "200": {
+                            "description": "Successful response",
+                            "content": {
+                              "application/json": {
+                                "schema": {
+                                  "type": "object",
+                                  "properties": {
+                                    "daily_energy_consumption": {
+                                      "type": "number"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "components": {}
+                }
 
         PromptOverrideConfiguration:
           PromptConfigurations:
