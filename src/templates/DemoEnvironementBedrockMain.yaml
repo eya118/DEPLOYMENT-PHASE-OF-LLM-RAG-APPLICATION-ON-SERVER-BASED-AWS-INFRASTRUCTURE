@@ -139,7 +139,7 @@ Resources:
                   - '*'
                   - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
 
-
+#check
 
   DependenciesLibrary:
     Type: AWS::Serverless::LayerVersion
