@@ -230,6 +230,7 @@ Resources:
                 paths:
                   /energy_api/json:
                     get:
+                      operationId: getEnergyConsumption
                       summary: Get energy consumption data
                       responses:
                         '200':
