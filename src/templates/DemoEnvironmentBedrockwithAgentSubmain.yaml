@@ -252,7 +252,6 @@ Resources:
                 Temperature: 1
                 TopP: 1
                 TopK: 1
-                maximumLength: 1024
               BasePromptTemplate: |
                 {
                   "messages": [
