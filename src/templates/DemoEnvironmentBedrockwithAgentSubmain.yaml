@@ -248,7 +248,7 @@ Resources:
               PromptCreationMode: OVERRIDDEN
               ParserMode: DEFAULT
               PromptState: ENABLED
-            - BasePromptTemplate: |
+              BasePromptTemplate: |
                 {
                   "messages": [
                     {
