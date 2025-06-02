@@ -196,6 +196,7 @@ Resources:
                   - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
 
 #created the agent
+  # the agent needes a name , a role , autotprepar eauto , instruction , IdleSessionTTLInSeconds , KnowledgeBaseId and state
   AgentResource:
       Type: AWS::Bedrock::Agent
       Properties:
@@ -214,6 +215,74 @@ Resources:
           - KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
             Description: !Ref KnowledgeBaseDescription
             KnowledgeBaseState: ENABLED
+        ActionGroups:
+          - ActionGroupName: "ActionGroupRetriveAPI"
+            Description: "This action group is used to query information about customers and procedures"
+            ActionGroupExecutor:
+              Lambda: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:lambda_function_delete_aftertest'
+            ApiSchema:
+            Payload: |
+              openapi: 3.0.0
+              info:
+                title: Energy Monitoring API
+                version: 1.0.0
+                description: API to get the consumption of device
+              paths:
+                /energy_api/json:
+                  get:
+                    summary: Get energy consumption data
+                    responses:
+                      '200':
+                        description: Successful response
+                        content:
+                          application/json:
+                            schema:
+                              type: object
+                              properties:
+                                daily_energy_consumption:
+                                  type: number
+
+        PromptOverrideConfiguration:
+          PromptConfigurations:
+            - BasePromptTemplate: |
+                {
+                  "messages": [
+                    {
+                      "role": "system",
+                      "content": " $instruction$ You have access to a set of functions (tools) to answer user questions.\n\nWhen needed, call them by responding with a JSON object in this format:\n{\n  \"tool_calls\": [\n    {\n      \"name\": \"$TOOL_NAME\",\n      \"parameters\": {}\n    }\n  ]\n}\n\nGuidelines:\n- Always reason carefully before calling a function.\n- Provide your final answer inside:\n  {\n    \"answer\": \"<your final answer>\"\n  }\n- Output your reasoning step-by-step inside:\n  {\n    \"thinking\": \"<step-by-step reasoning>\"\n  }\n"
+                    },
+                    {
+                      "role": "user",
+                      "content": "$question$"
+                    },
+                    {
+                      "role": "assistant",
+                      "content": "$agent_scratchpad$"
+                    }
+                  ],
+                  "tools": [
+                    {
+                      "type": "function",
+                      "function": {
+                        "name": "ActionGroupRetriveAPI",
+                        "description": "Used to query information about a device",
+                        "parameters": {
+                          "type": "object",
+                          "properties": {}
+                        }
+                      }
+                    }
+                  ],
+                  "tool_choice": "auto",
+                  "temperature": 0,
+                  "top_p": 1,
+                  "topK": 1
+                }
+  
+  
+  
+  
+
   LambdaInvokePolicy:
     Type: 'AWS::IAM::ManagedPolicy'
     Properties:
