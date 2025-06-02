@@ -35,16 +35,16 @@ Resources:
   # exemple of a role :  Roles allow AWS resources or services to act on behalf of an AWS account. For instance, an EC2 instance might need to access S3, so you would assign an IAM role to the EC2 instance that gives it the necessary permissions.
 # polies are for
 
+# 1. created a role for the agent
   AmazonBedrockExecutionRoleForAgentsQA:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
         Statement:
-          - Effect: Allow
-            Principal:
-              Service: bedrock.amazonaws.com
-            Action: sts:AssumeRole
+        - Effect: Allow
+          Principal:
+            Service: bedrock.amazonaws.com
+          Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
       Policies:
@@ -56,27 +56,10 @@ Resources:
                 Action:
                   - lambda:InvokeFunction
                 Resource: "*"
-        - PolicyName: AllowBedrockUpdateAgent
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - bedrock:UpdateAgent
-                Resource: "*"
-        - PolicyName: AllowPassRole
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: "*"
 
 
 
-
-
+# 2. created the knowledge base
   KnowledgeBaseWithAoss:
     Type: AWS::Bedrock::KnowledgeBase
     Properties:
@@ -97,6 +80,7 @@ Resources:
             VectorField: "bedrock-knowledge-base-default-vector"
             TextField: "AMAZON_BEDROCK_TEXT"
             MetadataField: "AMAZON_BEDROCK_METADATA"
+  #3. created the source database
   SampleDataSource:
     Type: AWS::Bedrock::DataSource
     Properties:
@@ -116,7 +100,7 @@ Resources:
 
 
 
-
+#4.created the ingestion function
 
   DocumentIngestionLambdaFunction:
     Type: AWS::Serverless::Function
@@ -135,7 +119,6 @@ Resources:
           knowledge_base_id: !Ref KnowledgeBaseWithAoss
           data_source_id:  !Ref SampleDataSource
 
-
       Events:
         Trigger:
           Type: EventBridgeRule
@@ -151,7 +134,7 @@ Resources:
 
 
 
-
+#5.created the role for the  knowledge base
   AmazonBedrockExecutionRoleForKnowledgeBase:
     Type: AWS::IAM::Role
     Properties:
@@ -212,6 +195,35 @@ Resources:
                   - "*"
                   - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/*
 
+#created the agent
+  AgentResource:
+      Type: AWS::Bedrock::Agent
+      Properties:
+        AgentName: !Ref AgentName
+        AgentResourceRoleArn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
+
+        AutoPrepare: true
+        FoundationModel:  !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.meta.llama3-1-8b-instruct-v1:0"
+#        FoundationModel: mistral.mistral-7b-instruct-v0:2
+        Instruction: "You are an Energy assistant expert. You have access to a knowledge base. Use it to answer every question when possible. 
+  Always cite the documents used in your answer. If you can't find information in the knowledge base, say so.
+  Do not guess or make up information. Show the source title or file name in your response if available."
+        Description: "Description is here"
+        IdleSessionTTLInSeconds: 900
+        KnowledgeBases:
+          - KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
+            Description: !Ref KnowledgeBaseDescription
+            KnowledgeBaseState: ENABLED
+  LambdaInvokePolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'lambda:InvokeFunction'
+            Resource: '*'
 
 
   AgentAlias:
@@ -221,58 +233,33 @@ Resources:
       AgentId: !GetAtt AgentResource.AgentId
       AgentAliasName: default
 
-  CreateAgentLambdaFunction:
+  InvokeAgentLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: CreateBedrockAgentFunction
-      Handler: create_agent.lambda_handler
+      FunctionName: InvokeBedrockAgentFunction
+      Handler: bedrock_api.lambda_handler
       Runtime: python3.11
-      CodeUri: ../functions/
+      CodeUri:  ../functions/
+
       Timeout: 120
       MemorySize: 256
       Environment:
         Variables:
-          AGENT_NAME: rag-bedrock-agent-v11
-          MODEL_ID: arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.meta.llama3-1-8b-instruct-v1:0
-          AGENT_ROLE_ARN: !GetAtt AmazonBedrockExecutionRole.Arn
-          Agent_resource_arn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
-          knowledge_base_id: !Ref KnowledgeBaseWithAoss
           AGENT_ID: !GetAtt AgentResource.AgentId
+          AGENT_ALIAS_ID: !Ref AgentAlias
       Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - bedrock:*
-                - bedrock:CreateAgent
-                - bedrock:CreateAgentAlias
-                - bedrock:InvokeAgent
-                - bedrock:UpdateAgent
-                - bedrock:PrepareAgent
-                - bedrock:UpdateAgentAlias
-                - bedrock:GetAgent
-              Resource: "*"
-            - Effect: Allow
-              Action:
-                - iam:PassRole
-              Resource: "*"
+        Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeAgent
+            Resource: "*"
       Events:
         ApiInvoke:
           Type: Api
           Properties:
-            Path: /create-agent
+            Path: /invoke
             Method: POST
 
-
-  DependenciesLogchainLibrary:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: longchain-libs
-      Description: Dependencies for agent
-      ContentUri: ../dependencies/         # i specified the whole folder
-      CompatibleRuntimes:
-        - python3.11
-    Metadata:
-      BuildMethod: python3.11
 Outputs:
   BedrockAgentId:
     Description: The ID of the created Bedrock Agent
@@ -281,13 +268,5 @@ Outputs:
   BedrockAgentAliasId:
     Description: The ID of the created Agent Alias
     Value: !Ref AgentAlias
-
-
-
-
-
-
-
-
 
 
