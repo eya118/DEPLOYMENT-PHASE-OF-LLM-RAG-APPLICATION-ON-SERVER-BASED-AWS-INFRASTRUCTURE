@@ -246,6 +246,7 @@ Resources:
                       "get": {
                         "operationId": "getEnergyConsumptionUniqueId",
                         "summary": "Get energy consumption data",
+                        "description": "Retrieve the daily energy consumption data for one device.",
                         "responses": {
                           "200": {
                             "description": "Successful response",
