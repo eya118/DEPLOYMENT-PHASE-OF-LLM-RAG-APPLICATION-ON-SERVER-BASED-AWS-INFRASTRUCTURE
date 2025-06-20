@@ -268,78 +268,6 @@ Resources:
   
   
 
-  OpenApiLambdaFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: OpenApiLambdaFunctionAPI
-      Runtime: python3.11
-      Handler: index.lambda_handler
-      Timeout: 300
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        ZipFile: |
-          import sys
-          import subprocess
-          import json
-          import logging
-          from http import HTTPStatus
-          from typing import Dict, Any
-  
-          subprocess.call("pip install requests -t /tmp/ --no-cache-dir".split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-          sys.path.insert(1, "/tmp/")
-  
-          import requests
-  
-          logger = logging.getLogger()
-          logger.setLevel(logging.INFO)
-  
-          def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
-              print("event:", event)
-              try:
-                  api_path = event.get("apiPath")
-                  id = event["parameters"][0]["value"].lower()
-                  if not api_path:
-                      raise KeyError("apiPath")
-  
-                  api_url = f"https://wr9y9.wiremockapi.cloud{api_path}/{id}"
-                  response_str = requests.get(api_url).text
-                  response_json = {"dailyconsumption": response_str}
-                  response_body = {"application/json": {"body": json.dumps(response_json)}}
-                  function = event.get("function")
-                  action_group = event.get("actionGroup")
-                  if not action_group:
-                      raise KeyError("actionGroup")
-  
-                  parameters = event.get("parameters", [])
-                  action_response = {
-                      "actionGroup": action_group,
-                      "function": function,
-                      "apiPath": api_path,
-                      "httpMethod": "GET",
-                      "httpStatusCode": 200,
-                      "responseBody": response_body,
-                      "functionResponse": {
-                          "responseBody": response_body
-                      }
-                  }
-                  message_version = event.get("messageVersion", "1.0")
-                  return {"response": action_response, "messageVersion": message_version}
-  
-              except KeyError as e:
-                  return {
-                      "statusCode": HTTPStatus.BAD_REQUEST,
-                      "body": f"Error: Missing required field: {str(e)}"
-                  }
-              except Exception as e:
-                  return {
-                      "statusCode": HTTPStatus.INTERNAL_SERVER_ERROR,
-                      "body": "Internal server error"
-                  }
-          
-          
-        
-
-
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -354,33 +282,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  LambdaInvokePermissionForBedrock:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref OpenApiLambdaFunction
-      Principal: bedrock.amazonaws.com
-      SourceArn: !Sub "arn:${AWS::Partition}:bedrock:${AWS::Region}:${AWS::AccountId}:agent/*"
 
-  RoleForOpenApi:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: bedrock.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: AllowLambdaInvoke
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - lambda:InvokeFunction
-                Resource: !GetAtt OpenApiLambdaFunction.Arn
 
 
 
