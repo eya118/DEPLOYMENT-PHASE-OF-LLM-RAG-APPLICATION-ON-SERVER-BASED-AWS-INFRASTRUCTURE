@@ -18,6 +18,7 @@ class AgentInvoker:
         session_id = str(uuid.uuid4())
         completion = ""
         citations = []
+        print("")
 
         try:
             logger.info(f"Invoking agent {self.agent_id} with alias {self.agent_alias_id}")
