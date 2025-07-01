@@ -1,0 +1,96 @@
+#defining cloudformation standard version
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "EC2 Auto Scaling with ALB FOR EXISITING ec2 instance"
+Parameters:
+  #step 1 :defining the vpc and subnet of the instances
+  VPCId:
+    Type: String
+    Default: vpc-e282698b
+  SubnetId1:
+    Type: String
+    Default: subnet-ff5b5087
+  SubnetId2:
+    Type: String
+    Default: subnet-66749d0f
+
+Resources:
+  #step 2: configuring the Launch template for launching the instance
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: EC2Template
+      LaunchTemplateData:
+        ImageId: ami-0578d8d459dc3410c
+        InstanceType: g4dn.xlarge
+        KeyName: virtual_key_ollama_server
+        SecurityGroupIds: #firewall configuration
+          - sg-0a5aff45d72a354b1
+        DisableApiTermination: true
+
+  #step 3 : defining the Autoscaling group
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref SubnetId1
+        - !Ref SubnetId2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: '1'
+      MaxSize: '2'
+      DesiredCapacity: '1'
+      TargetGroupARNs:
+        - !Ref TargetGroup
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+    #step 4 : defining the tagetgroup it's routing the trafic from ALB to instances
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: EC2TargetGroup
+      Port: 8001
+      Protocol: HTTP
+      VpcId: !Ref VPCId
+      TargetType: instance
+      HealthCheckPath: /collection
+      HealthCheckPort: traffic-port
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 5
+    #step5 :  defining a Load Balancer ALB
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: EC2LoadBalancer
+      Subnets:
+        - !Ref SubnetId1
+        - !Ref SubnetId2
+      SecurityGroups:
+        - sg-0a5aff45d72a354b1
+      Type: application
+      Scheme: internet-facing #means that the ALB is accessible from the internet
+      IpAddressType: ipv4
+    #step 6 : defining the ALB listener
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 8001
+      Protocol: HTTP
+
+# step 7 : the outputs
+Outputs:
+  LoadBalancerDNS:
+    Description: "DNS name of the Load Balancer"
+    Value: !GetAtt LoadBalancer.DNSName
+
+
+#note to self we don't need policies here because ec2 dosen't need access to any services
+
+
