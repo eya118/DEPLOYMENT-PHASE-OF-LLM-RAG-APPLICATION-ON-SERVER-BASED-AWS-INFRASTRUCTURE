@@ -1,3 +1,0 @@
-npm install -g artillery@latest
-npm install -g artillery-plugin-publish-metrics
-npm install -g artillery-plugin-prometheus
