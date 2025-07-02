@@ -1,0 +1,24 @@
+openapi: 3.0.0
+info:
+  title: Energy Monitoring API
+  version: 1.0.0
+  description: API to get the energy consumption of a device.
+
+paths:
+  /energy_api/json:
+    get:
+      operationId: getEnergyConsumptionData  # No double underscores
+      summary: Get energy consumption data
+      description: Retrieve the daily energy consumption data for one device.
+      responses:
+        '200':
+          description: Successful response containing the energy consumption data.
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Response body containing the energy consumption details.
+                properties:
+                  daily_energy_consumption:
+                    type: number
+                    description: The daily energy consumption value of one device in kWh.
