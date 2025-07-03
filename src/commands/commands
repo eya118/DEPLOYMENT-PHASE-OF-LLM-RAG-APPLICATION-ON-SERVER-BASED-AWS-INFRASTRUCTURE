@@ -1,0 +1,3 @@
+cd /src/templates
+ aws cloudformation create-stack --stack-name Deployment-ec2-rag --template-body file://template.yml --region eu-north-1
+
