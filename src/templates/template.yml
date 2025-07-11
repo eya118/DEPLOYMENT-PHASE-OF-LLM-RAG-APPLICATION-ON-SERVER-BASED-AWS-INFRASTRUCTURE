@@ -12,6 +12,9 @@ Parameters:
   SubnetId2:
     Type: String
     Default: subnet-66749d0f
+  AMIId:
+    Type: String
+    Description: AMI ID from the AMI creation stage
 
 Resources:
   #step 2: configuring the Launch template for launching the instance
@@ -20,7 +23,7 @@ Resources:
     Properties:
       LaunchTemplateName: EC2Template
       LaunchTemplateData:
-        ImageId: ami-0578d8d459dc3410c
+        ImageId: !Ref AMIId
         InstanceType: g4dn.xlarge
         KeyName: virtual_key_ollama_server
         SecurityGroupIds: #firewall configuration
@@ -53,11 +56,11 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref VPCId
       TargetType: instance
-      HealthCheckPath: /collection
+      HealthCheckPath: /collection/
       HealthCheckPort: traffic-port
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
-      HealthCheckIntervalSeconds: 30
+      HealthCheckIntervalSeconds: 60
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 5
     #step5 :  defining a Load Balancer ALB
