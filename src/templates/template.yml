@@ -46,7 +46,7 @@ Resources:
       TargetGroupARNs:
         - !Ref TargetGroup
       HealthCheckType: EC2
-      HealthCheckGracePeriod: 300
+      HealthCheckGracePeriod: 600
     #step 4 : defining the tagetgroup it's routing the trafic from ALB to instances
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -59,10 +59,10 @@ Resources:
       HealthCheckPath: /docs
       HealthCheckPort: traffic-port
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
-      HealthCheckIntervalSeconds: 60
-      HealthyThresholdCount: 2
-      UnhealthyThresholdCount: 5
+      HealthCheckTimeoutSeconds: 50
+      HealthCheckIntervalSeconds: 50
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
     #step5 :  defining a Load Balancer ALB
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
