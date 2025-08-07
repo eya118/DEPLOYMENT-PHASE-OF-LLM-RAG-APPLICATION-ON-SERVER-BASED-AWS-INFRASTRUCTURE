@@ -56,7 +56,7 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref VPCId
       TargetType: instance
-      HealthCheckPath: /collection/
+      HealthCheckPath: /docs
       HealthCheckPort: traffic-port
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
