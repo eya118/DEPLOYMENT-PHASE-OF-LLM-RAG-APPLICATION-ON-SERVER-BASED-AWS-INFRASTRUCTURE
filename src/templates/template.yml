@@ -59,8 +59,8 @@ Resources:
       HealthCheckPath: /docs
       HealthCheckPort: traffic-port
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 50
-      HealthCheckIntervalSeconds: 50
+      HealthCheckTimeoutSeconds: 30
+      HealthCheckIntervalSeconds: 60
       HealthyThresholdCount: 3
       UnhealthyThresholdCount: 3
     #step5 :  defining a Load Balancer ALB
